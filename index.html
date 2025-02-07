@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!--
+   Copyright 2025 Google LLC
+   
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+   
+       http://www.apache.org/licenses/LICENSE-2.0
+   
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+   -->
+   
+<html lang="en">
+   <head>
+      <link rel="stylesheet" href="css/style.css">
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Filter DLC Logs</title>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+      <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+   </head>
+   <body>
+      <div class="container">
+      <header>
+         <h1>DLC InsightLab</h1>
+         <p style="font-size: 1.0rem; color: #fff; text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.3);"> Smart analysis and intelligence for DLC logs </p>
+         <div class="panel-toggle" onclick="togglePanels()">
+            <i class="fas fa-chevron-up"></i>
+         </div>
+         <button id="settingsButton" class="settings-btn" onclick="openFilterSettings()"> 
+         <i class="fas fa-cog"></i> Filters
+         </button>
+         <div id="filterModal">
+            <div style="display: flex; justify-content: space-between; background-color: #f1f4f9; padding: 10px; border-bottom: 1px solid #ddd;">
+               <button onclick="showTab('currentFiltersTab')" class="tab-button" id="currentFiltersTabButton">Default Filters</button>
+               <button onclick="showTab('customFiltersTab')" class="tab-button" id="customFiltersTabButton">Custom Filters</button>
+            </div>
+            <div id="currentFiltersTab" class="tab-content" style="display: block;">
+               <h3 style="margin-top: 10px; color: #28a745;">Manage Default Filters</h3>
+               <div style="margin-bottom: 10px; display: flex; justify-content: space-between;">
+                  <button onclick="selectAllFilters()" class="filter-action-btn">Select All</button>
+                  <button onclick="deselectAllFilters()" class="filter-action-btn">Deselect All</button>
+               </div>
+               <div id="filterList" style="padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            <div id="customFiltersTab" class="tab-content" style="display: none;">
+               <h3 style="margin-top: 10px; color: #28a745;">Manage Custom Filters</h3>
+               <div style="margin-bottom: 10px; display: flex; align-items: center;">
+                  <input type="text" id="customFilterInput" placeholder="Enter custom filter string" style="flex: 1; padding: 5px; border-radius: 4px; border: 1px solid #ddd; margin-right: 10px;">
+                  <button onclick="addCustomFilter()" class="filter-action-btn" style="background-color: #28a745; color: white;">Add</button>
+               </div>
+               <ul id="customFilterList" style="list-style-type: none; padding: 0; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto;"></ul>
+            </div>
+            <button onclick="closeFilterSettings()" style="margin-top: 10px; background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+         </div>
+         <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closeFilterSettings()"></div>
+      </header>
+      <div class="upload-section">
+         <div class="file-input-container">
+            <label for="fileInput">Upload Log File or ZIP:</label>
+            <input type="file" id="fileInput" accept=".txt, .log, .zip" onchange="handleFileSelect(event)" />
+         </div>
+         <div class="instructions" style="margin-top: 10px; font-size: 0.9rem; color: #555;">
+            <strong>Instructions:</strong>
+            <ol style="margin-top: 5px; padding-left: 20px; line-height: 1.5;">
+               <li>Generate a bug report using <code>adb bugreport</code>.</li>
+               <li>Upload the <strong>bugreport ZIP file</strong> or unzip it and attach the file titled <strong>"bugreport-*.txt"</strong>.</li>
+            </ol>
+         </div>
+         <div class="button-container">
+            <button id="processButton" onclick="processFile()" disabled> Process Logs </button>
+            <button id="roleHolderButton" onclick="openRoleHolderInfo()" disabled> View Role Holders </button>
+         </div>
+         <div id="roleHolderModal">
+            <h3>Role Holder Information</h3>
+            <div id="dlcImplementationDetails">Loading...</div>
+            <button onclick="closeRoleHolderInfo()">Close</button>
+         </div>
+         <div id="roleHolderOverlay" onclick="closeRoleHolderInfo()"></div>
+      </div>
+      <div class="main-layout">
+         <div class="left-panel">
+            <div id="deviceStatusBox" class="status-box">
+               <h2>Device Provisioning Status</h2>
+               <div id="deviceStatus">No data available</div>
+            </div>
+            <div class="status-box">
+               <h2>Kiosk App Status</h2>
+               <div id="kioskStatus">No data available</div>
+            </div>
+         </div>
+         <div class="right-panel">
+            <h2>State Timeline</h2>
+            <ul class="timeline-list" id="stateTimeline"></ul>
+         </div>
+      </div>
+      <div class="ailogs-section">
+         <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            ">
+            <div class="gemini-insights">
+               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/2560px-Google_Gemini_logo.svg.png" alt="Gemini Logo" class="gemini-logo" />
+            </div>
+            <div style="display: flex; align-items: center;">
+               <button id="toggleInsightsButton" onclick="toggleInsights()" disabled> Show Insights </button>
+               <div id="insightsLoader" class="loader" style="display: none;"></div>
+            </div>
+         </div>
+         <div id="aiInsights" class="status-box clean-insights-box" style="display: none">
+         </div>
+      </div>
+      <div class="logs-controls-section">
+         <div id="search-container" class="search-copy-container" style="margin-bottom: -5px;">
+            <input type="text" id="logSearchInput" placeholder="Search logs (comma-separated)..." oninput="searchLogs()" />
+            <button id="copyButton" onclick="copyToClipboard()">Copy to Clipboard</button>
+         </div>
+         <div id="appliedFilters" style="margin-bottom: 0px; font-size: 0.9rem; color: #555;">
+            <strong>Applied Filters:</strong> <span id="filterTags" style="color: #007bff;">None</span>
+         </div>
+      </div>
+      <div class="logs-section">
+         <pre id="dlcOutput"></pre>
+      </div>
+      <div id="contextualLogsSection" class="logs-section" style="margin-top: 10px;">
+         <h3 style="cursor: pointer;" onclick="toggleContextualLogs()">Contextual Logs 
+            <span id="contextToggleIcon" style="font-size: 1rem; color: #007bff;">[+]</span>
+         </h3>
+         <div id="contextLogsContent" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+            <pre id="contextLogsOutput"></pre>
+         </div>
+      </div>
+      <script src="js/script.js"></script>
+   </body>
+</html>
