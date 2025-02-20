@@ -193,6 +193,14 @@ function processFile() {
             packageName = match[1];
          }
       }
+
+     if (!packageName && line.includes("StartLockTaskModeWorker: Launching activity for intent:")) {
+         const match = line.match(/pkg=([\w.]+)/);
+         if (match) {
+             packageName = match[1];
+         }
+     }
+      
       if (line.includes("PlayInstallServiceConnectionImpl: App installation result bundle")) {
          const match = line.match(/status_code=(-?\d+)/);
          if (match) {
