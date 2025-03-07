@@ -146,6 +146,7 @@ function processFile() {
    let packageName = null;
    let installationStatus = null;
    let buildFingerprint = null;
+   let ineligibleCountryDetected = false; 
    const dateTimeRegex = /^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}/;
    const combinedFilters = [...activeFilters, ...customFilters];
    lines.forEach((line, index) => {
@@ -247,10 +248,13 @@ function processFile() {
             addToTimeline(stateTimeline, line, `User Switch Reported: User ID ${userId}`);
          }
       }
+      if (line.includes("ProvisionHelperImpl: Not in eligible country")) {
+         ineligibleCountryDetected = true;
+      }
       if (!isMatched && combinedFilters.length > 0) return;
    });
    updateKioskStatus(kioskInstallationStatus, packageName, installationStatus, buildFingerprint);
-   updateDeviceStatus(lastProvisionState, installationStatus);
+   updateDeviceStatus(lastProvisionState, installationStatus, ineligibleCountryDetected);
    displayTimeline(stateTimeline);
    updateDLCImplementationStatus(fileContent);
    document.getElementById('dlcOutput').innerHTML = filteredDlcLines.length > 0 ?
@@ -530,12 +534,16 @@ function updateKioskStatus(kioskInstallationStatus, packageName, installationSta
    kioskDiv.className = "";
 }
 
-function updateDeviceStatus(lastProvisionState, installationStatus) {
+function updateDeviceStatus(lastProvisionState, installationStatus, ineligibleCountryDetected) {
    const statusBox = document.getElementById('deviceStatusBox');
    const statusDiv = document.getElementById('deviceStatus');
    let statusMessage = "";
    let statusClass = "";
-   if (lastProvisionState === 4) {
+   if (ineligibleCountryDetected) {
+      statusMessage = "FAILED - INELIGIBLE COUNTRY";
+      statusClass = "status-failed";
+   } 
+   else if (lastProvisionState === 4) {
       statusMessage += "SUCCEEDED";
       statusClass = "status-success";
    } else if (lastProvisionState === 5 || (installationStatus && installationStatus !== "SUCCESS" && installationStatus !== "ALREADY_UP_TO_DATE")) {
